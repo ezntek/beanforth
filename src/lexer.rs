@@ -44,10 +44,22 @@ impl Lexer {
     fn analyze(&mut self) -> Token {
         match char::from(self.at()) {
             // Maths Operators
-            '+' => Token::Math(MathToken::Add),
-            '-' => Token::Math(MathToken::Sub),
-            '*' => Token::Math(MathToken::Mul),
-            '/' => Token::Math(MathToken::Div),
+            '+' => {
+                self.ptr += 1;
+                Token::Math(MathToken::Add)
+            }
+            '-' => {
+                self.ptr += 1;
+                Token::Math(MathToken::Sub)
+            }
+            '*' => {
+                self.ptr += 1;
+                Token::Math(MathToken::Mul)
+            }
+            '/' => {
+                self.ptr += 1;
+                Token::Math(MathToken::Div)
+            }
 
             // Comments
             '\\' => {
@@ -58,6 +70,10 @@ impl Lexer {
                 while curr_chr != '\n' {
                     curr_chr = self.peek();
                     self.peek += 1;
+
+                    if self.peek >= self.data.len() {
+                        break;
+                    }
                 }
 
                 self.ptr = self.peek;
@@ -95,6 +111,7 @@ impl Lexer {
                         .expect("falsefully parsed a non-number as a number somewhere!");
                     Token::Literal(num)
                 } else {
+                    self.ptr += 1;
                     Token::Invalid
                 }
             }
