@@ -5,7 +5,7 @@ pub struct ErrorLocation {
 }
 
 #[derive(Debug)]
-pub enum MathToken {
+pub enum Math {
     Add,
     Sub,
     Mul,
@@ -13,10 +13,36 @@ pub enum MathToken {
 }
 
 #[derive(Debug)]
+pub enum Word {
+    Dup,
+    Drop,
+    Swap,
+    Over,
+    Rot,
+    Emit,
+    Cr,
+
+    // operations
+    Mod,
+    And,
+    Or,
+    Invert, // `Not`
+}
+
+#[derive(Debug)]
+pub enum Symbol {
+    Period,
+    PeriodDoubleQuotes,
+    Equal,
+    Gt,
+    Lt,
+}
+
+#[derive(Debug)]
 pub enum Token {
-    Math(MathToken),
+    Math(Math),
+    Symbol(Symbol),
+    BuiltinWord(Word),
     Literal(i32),
-    Invalid,
-    Nothing,
     Eof,
 }
