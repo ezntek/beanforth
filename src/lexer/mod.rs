@@ -133,7 +133,9 @@ impl Lexer {
 
         // Words
         if ALPHABET.contains(&ch.to_ascii_lowercase()) {
-            return self.tokenize_word();
+            if let Some(w) = self.tokenize_word() {
+                return Some(w);
+            }
         }
 
         // comments
