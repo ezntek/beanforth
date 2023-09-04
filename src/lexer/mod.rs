@@ -12,6 +12,10 @@ use macrodefs::*;
 use types::*;
 
 const NUMBERS: [char; 10] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+const ALPHABET: [char; 26] = [
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
+    't', 'u', 'v', 'w', 'x', 'y', 'z',
+];
 
 #[derive(Debug)]
 pub struct Lexer {
@@ -63,6 +67,30 @@ impl Lexer {
         return r;
     }
 
+    fn tokenize_word(&mut self) -> Option<LexerResult> {
+        let variants = Word::get_lengths_of_variants();
+        let max_len = variants.keys().max().cloned().unwrap();
+
+        let mut temp = String::new();
+
+        self.peek = self.ptr;
+        for i in 0..max_len {
+            while temp.len() < i {
+                temp.push(self.peek());
+                self.peek += 1;
+            }
+
+            for elem in variants.get(&i).unwrap() {
+                if elem.to_string() == temp {
+                    let tok = Token::BuiltinWord(elem.clone());
+                    return Some(Ok(tok));
+                }
+            }
+        }
+
+        None
+    }
+
     fn tok_single_chr(&mut self, ch: char) -> Option<LexerResult> {
         match ch {
             '+' => {
@@ -101,6 +129,11 @@ impl Lexer {
         // Numbers
         if NUMBERS.contains(&ch) {
             return Some(self.tokenize_number());
+        }
+
+        // Words
+        if ALPHABET.contains(&ch.to_ascii_lowercase()) {
+            return self.tokenize_word();
         }
 
         // comments
