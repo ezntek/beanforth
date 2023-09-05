@@ -25,6 +25,7 @@ pub enum Word {
     Rot,
     Emit,
     Cr,
+    Variable,
 
     // operations
     Mod,
@@ -66,17 +67,8 @@ impl Word {
             "over" => Some(W::Over),
             "emit" => Some(W::Emit),
             "invert" => Some(W::Invert),
+            "variable" => Some(W::Variable),
             _ => None,
         }
-    }
-
-    pub fn get_lengths_of_variants() -> HashMap<usize, Vec<Word>> {
-        use Word as W;
-        return hash_map! {
-            2 => vec![W::Cr, W::Or],
-            3 => vec![W::Dup, W::Rot, W::Mod, W::And],
-            4 => vec![W::Drop, W::Swap, W::Over, W::Emit],
-            6 => vec![W::Invert]
-        };
     }
 }

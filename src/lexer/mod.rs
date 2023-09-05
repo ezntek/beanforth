@@ -14,36 +14,76 @@ use types::*;
 #[derive(Debug)]
 pub struct Lexer {
     data: Vec<char>,
+    data_len: usize,
     ptr: usize,
     peek: usize,
 }
 
-type LexerResult = Result<Token, LexerError>;
+type LexerResult<T> = Result<T, LexerError>;
+
+macro_rules! unwrap_to_eof {
+    ($optchar:expr) => {
+        match $optchar {
+            Some(ch) => ch,
+            None => return Ok(Token::Eof),
+        }
+    };
+}
+
+macro_rules! unwrap_to_eof_option {
+    ($optchar:expr) => {
+        match $optchar {
+            Some(ch) => ch,
+            None => return Some(Ok(Token::Eof)),
+        }
+    };
+}
 
 impl Lexer {
     pub fn new(data: String) -> Self {
+        dbg!(&data);
+        dbg!(data.len());
         Lexer {
             data: data.chars().collect::<Vec<char>>(),
+            data_len: data.len(),
             ptr: 0,
             peek: 0,
         }
     }
 
-    fn at(&self) -> char {
-        self.data[self.ptr]
+    fn at(&self) -> Option<char> {
+        dbg!(self.ptr);
+        if self.ptr >= self.data_len {
+            None
+        } else {
+            Some(self.data[self.ptr])
+        }
     }
 
-    fn peek(&self) -> char {
-        self.data[self.peek]
+    fn peek(&self) -> Option<char> {
+        dbg!(self.peek);
+        if self.peek >= self.data_len {
+            None
+        } else {
+            Some(self.data[self.peek])
+        }
     }
 
-    fn tokenize_number(&mut self) -> LexerResult {
-        let mut curr_num_ch: char = self.at();
+    fn tokenize_number(&mut self) -> LexerResult<Token> {
+        let mut curr_num_ch: char = unwrap_to_eof!(self.at());
         let mut potential_num = String::from(curr_num_ch);
 
         self.peek = self.ptr + 1;
-        while curr_num_ch.is_ascii_digit() {
-            curr_num_ch = self.peek();
+        'outerloop: while curr_num_ch.is_ascii_digit() {
+            curr_num_ch = match self.peek() {
+                Some(n) => n,
+                None => {
+                    self.peek -= 1;
+                    potential_num.push(self.peek().unwrap());
+                    self.peek += 1;
+                    break 'outerloop;
+                }
+            };
             if !curr_num_ch.is_ascii_digit() {
                 break;
             }
@@ -61,22 +101,46 @@ impl Lexer {
         return r;
     }
 
-    fn read_word(&mut self) -> String {
+    fn read_word(&mut self) -> Option<String> {
         let mut s = String::new();
 
         self.peek = self.ptr;
-        while self.peek().is_ascii_alphabetic() {
-            s.push(self.peek());
+        'outerloop: while {
+            let p = self.peek();
+            dbg!(&p);
+            let peek = match p {
+                Some(pk) => pk,
+                None => break 'outerloop,
+            };
+            peek.is_ascii_alphabetic()
+        } {
+            let peek = match self.peek() {
+                Some(p) => p,
+                None => {
+                    self.peek -= 1;
+                    s.push(self.peek().unwrap());
+                    self.peek += 1;
+                    break 'outerloop;
+                }
+            };
+
+            s.push(peek);
             self.peek += 1;
         }
 
         self.ptr = self.peek;
 
-        return s;
+        println!("{}", s);
+
+        dbg!(&s);
+
+        return Some(s);
     }
 
-    fn tokenize_word(&mut self) -> Option<LexerResult> {
-        let word = match Word::from_string(self.read_word()) {
+    fn tokenize_word(&mut self) -> Option<LexerResult<Token>> {
+        let word_string = unwrap_to_eof_option!(self.read_word());
+        dbg!(&word_string);
+        let word = match Word::from_string(word_string) {
             Some(wd) => wd,
             None => {
                 return Some(Err(note_lex_err!(
@@ -91,7 +155,7 @@ impl Lexer {
         Some(Ok(Token::BuiltinWord(word))) // TODO: try to make it better
     }
 
-    fn tok_single_chr(&mut self, ch: char) -> Option<LexerResult> {
+    fn tok_single_chr(&mut self, ch: char) -> Option<LexerResult<Token>> {
         match ch {
             '+' => {
                 self.ptr += 1;
@@ -117,12 +181,32 @@ impl Lexer {
         }
     }
 
-    fn tokenize_at_ptr(&mut self) -> Option<LexerResult> {
-        let ch = self.at();
+    fn tokenize_at_ptr(&mut self) -> Option<LexerResult<Token>> {
+        let ch = unwrap_to_eof_option!(self.at());
+        dbg!(&ch);
 
         // Ignore whitespaces
         if ch.is_ascii_whitespace() {
             self.ptr += 1;
+            return None;
+        }
+
+        // comments
+        if ch == '\\' {
+            self.peek = self.ptr + 1;
+            while {
+                let pk = unwrap_to_eof_option!(self.peek());
+                dbg!(&pk);
+                pk != '\n'
+            } {
+                self.peek += 1;
+
+                if self.peek >= self.data_len {
+                    break;
+                }
+            }
+
+            self.ptr = self.peek;
             return None;
         }
 
@@ -138,23 +222,6 @@ impl Lexer {
             }
         }
 
-        // comments
-        if ch == '\\' {
-            let mut curr_chr = '\\';
-
-            self.peek = self.ptr + 1;
-            while curr_chr != '\n' {
-                curr_chr = self.peek();
-                self.peek += 1;
-
-                if self.peek >= self.data.len() {
-                    break;
-                }
-            }
-
-            self.ptr = self.peek;
-        }
-
         // Single character symbols
         if let Some(r) = self.tok_single_chr(ch) {
             return Some(r);
@@ -167,7 +234,7 @@ impl Lexer {
     pub fn tokenize(&mut self) -> Vec<Token> {
         let mut res: Vec<Token> = Vec::new();
 
-        while self.ptr < self.data.len() {
+        while self.ptr < self.data_len {
             if let Some(r) = self.tokenize_at_ptr() {
                 let tok = match r {
                     Ok(t) => t,
@@ -176,6 +243,10 @@ impl Lexer {
                         std::process::exit(1);
                     }
                 };
+
+                if let Token::Eof = tok {
+                    break;
+                }
 
                 res.push(tok);
             }
