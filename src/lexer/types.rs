@@ -51,27 +51,25 @@ pub enum Token {
     Eof,
 }
 
-impl ToString for Word {
-    fn to_string(&self) -> String {
-        use Word as W;
-        let res = match self {
-            W::Cr => "cr",
-            W::Or => "or",
-            W::Dup => "dup",
-            W::Rot => "rot",
-            W::Mod => "mod",
-            W::And => "and",
-            W::Drop => "drop",
-            W::Swap => "swap",
-            W::Over => "over",
-            W::Emit => "emit",
-            W::Invert => "invert",
-        };
-        res.to_owned()
-    }
-}
-
 impl Word {
+    pub fn from_string(txt: String) -> Option<Self> {
+        use Word as W;
+        match txt.as_str() {
+            "cr" => Some(W::Cr),
+            "or" => Some(W::Or),
+            "dup" => Some(W::Dup),
+            "rot" => Some(W::Rot),
+            "mod" => Some(W::Mod),
+            "and" => Some(W::And),
+            "drop" => Some(W::Drop),
+            "swap" => Some(W::Swap),
+            "over" => Some(W::Over),
+            "emit" => Some(W::Emit),
+            "invert" => Some(W::Invert),
+            _ => None,
+        }
+    }
+
     pub fn get_lengths_of_variants() -> HashMap<usize, Vec<Word>> {
         use Word as W;
         return hash_map! {

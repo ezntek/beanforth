@@ -6,6 +6,7 @@ pub enum LexerErrorVariant {
     InvalidToken(char),
     UnexpectedToken(char),
     DeformedLiteral(String),
+    GenericPlaceholder,
 }
 
 #[derive(Debug)]
@@ -23,6 +24,7 @@ impl fmt::Display for LexerErrorVariant {
             V::InvalidToken(ch) => write!(f, "Invalid character `{}`", ch),
             V::UnexpectedToken(ch) => write!(f, "Unexpected character `{}`", ch),
             V::DeformedLiteral(s) => write!(f, "Deformed literal `{}`", s),
+            V::GenericPlaceholder => write!(f, "Generic placeholder error"),
         }
     }
 }
@@ -57,5 +59,12 @@ macro_rules! v_unexpected_tok {
 macro_rules! v_deformed_literal {
     ($param:expr) => {
         error::LexerErrorVariant::DeformedLiteral($param)
+    };
+}
+
+#[macro_export]
+macro_rules! v_generic {
+    () => {
+        error::LexerErrorVariant::GenericPlaceholder
     };
 }

@@ -11,12 +11,6 @@ use error::*;
 use macrodefs::*;
 use types::*;
 
-const NUMBERS: [char; 10] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
-const ALPHABET: [char; 26] = [
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
-    't', 'u', 'v', 'w', 'x', 'y', 'z',
-];
-
 #[derive(Debug)]
 pub struct Lexer {
     data: Vec<char>,
@@ -48,9 +42,9 @@ impl Lexer {
         let mut potential_num = String::from(curr_num_ch);
 
         self.peek = self.ptr + 1;
-        while NUMBERS.contains(&curr_num_ch) {
+        while curr_num_ch.is_ascii_digit() {
             curr_num_ch = self.peek();
-            if !NUMBERS.contains(&curr_num_ch) {
+            if !curr_num_ch.is_ascii_digit() {
                 break;
             }
             potential_num.push(curr_num_ch);
@@ -67,28 +61,34 @@ impl Lexer {
         return r;
     }
 
-    fn tokenize_word(&mut self) -> Option<LexerResult> {
-        let variants = Word::get_lengths_of_variants();
-        let max_len = variants.keys().max().cloned().unwrap();
-
-        let mut temp = String::new();
+    fn read_word(&mut self) -> String {
+        let mut s = String::new();
 
         self.peek = self.ptr;
-        for i in 0..max_len {
-            while temp.len() < i {
-                temp.push(self.peek());
-                self.peek += 1;
-            }
-
-            for elem in variants.get(&i).unwrap() {
-                if elem.to_string() == temp {
-                    let tok = Token::BuiltinWord(elem.clone());
-                    return Some(Ok(tok));
-                }
-            }
+        while self.peek().is_ascii_alphabetic() {
+            s.push(self.peek());
+            self.peek += 1;
         }
 
-        None
+        self.ptr = self.peek;
+
+        return s;
+    }
+
+    fn tokenize_word(&mut self) -> Option<LexerResult> {
+        let word = match Word::from_string(self.read_word()) {
+            Some(wd) => wd,
+            None => {
+                return Some(Err(note_lex_err!(
+                    0,
+                    self.ptr,
+                    v_generic!(),
+                    "Word parsing failed."
+                )))
+            }
+        };
+
+        Some(Ok(Token::BuiltinWord(word))) // TODO: try to make it better
     }
 
     fn tok_single_chr(&mut self, ch: char) -> Option<LexerResult> {
@@ -121,18 +121,18 @@ impl Lexer {
         let ch = self.at();
 
         // Ignore whitespaces
-        if ['\t', ' '].contains(&ch) {
+        if ch.is_ascii_whitespace() {
             self.ptr += 1;
             return None;
         }
 
         // Numbers
-        if NUMBERS.contains(&ch) {
+        if ch.is_ascii_digit() {
             return Some(self.tokenize_number());
         }
 
         // Words
-        if ALPHABET.contains(&ch.to_ascii_lowercase()) {
+        if ch.is_ascii_alphabetic() {
             if let Some(w) = self.tokenize_word() {
                 return Some(w);
             }
