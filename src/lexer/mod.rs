@@ -93,18 +93,17 @@ impl Lexer {
 
         self.ptr = self.peek;
 
-        let r = match potential_num.parse::<i32>() {
+        match potential_num.parse::<i32>() {
             Ok(v) => Ok(Token::Literal(v)),
             Err(_) => Err(lex_err!(0, self.ptr, v_deformed_literal!(potential_num))),
-        };
-
-        return r;
+        }
     }
 
     fn read_word(&mut self) -> Option<String> {
         let mut s = String::new();
 
         self.peek = self.ptr;
+
         'outerloop: while {
             let p = self.peek();
             dbg!(&p);
@@ -175,6 +174,21 @@ impl Lexer {
             '/' => {
                 self.ptr += 1;
                 let res = Token::Math(Math::Div);
+                Some(Ok(res))
+            }
+            '.' => {
+                self.ptr += 1;
+                let res = Token::Symbol(Character::Period);
+                Some(Ok(res))
+            }
+            ':' => {
+                self.ptr += 1;
+                let res = Token::Symbol(Character::Colon);
+                Some(Ok(res))
+            }
+            ';' => {
+                self.ptr += 1;
+                let res = Token::Symbol(Character::Semicolon);
                 Some(Ok(res))
             }
             _ => None,

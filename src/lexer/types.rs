@@ -1,7 +1,3 @@
-use std::collections::HashMap;
-
-use crate::hash_map;
-
 #[derive(Debug)]
 pub struct ErrorLocation {
     pub line: usize,
@@ -35,18 +31,19 @@ pub enum Word {
 }
 
 #[derive(Debug)]
-pub enum Symbol {
+pub enum Character {
     Period,
-    PeriodDoubleQuotes,
     Equal,
     Gt,
     Lt,
+    Semicolon,
+    Colon,
 }
 
 #[derive(Debug)]
 pub enum Token {
     Math(Math),
-    Symbol(Symbol),
+    Symbol(Character),
     BuiltinWord(Word),
     Literal(i32),
     Eof,
