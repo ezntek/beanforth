@@ -51,22 +51,22 @@ impl Lexer {
         }
     }
 
-    fn at(&self) -> Option<char> {
-        dbg!(self.ptr);
-        if self.ptr >= self.data_len {
+    fn get(&self, pos: usize) -> Option<char> {
+        if pos >= self.data_len {
             None
         } else {
             Some(self.data[self.ptr])
         }
     }
 
+    fn at(&self) -> Option<char> {
+        dbg!(self.ptr);
+        self.get(self.ptr)
+    }
+
     fn peek(&self) -> Option<char> {
         dbg!(self.peek);
-        if self.peek >= self.data_len {
-            None
-        } else {
-            Some(self.data[self.peek])
-        }
+        self.get(self.peek)
     }
 
     fn tokenize_number(&mut self) -> LexerResult<Token> {
@@ -116,9 +116,7 @@ impl Lexer {
             let peek = match self.peek() {
                 Some(p) => p,
                 None => {
-                    self.peek -= 1;
-                    s.push(self.peek().unwrap());
-                    self.peek += 1;
+                    s.push(self.get(self.peek - 1).unwrap());
                     break 'outerloop;
                 }
             };
@@ -139,59 +137,79 @@ impl Lexer {
     fn tokenize_word(&mut self) -> Option<LexerResult<Token>> {
         let word_string = unwrap_to_eof_option!(self.read_word());
         dbg!(&word_string);
-        let word = match Word::from_string(word_string) {
-            Some(wd) => wd,
-            None => {
-                return Some(Err(note_lex_err!(
-                    0,
-                    self.ptr,
-                    v_generic!(),
-                    "Word parsing failed."
-                )))
-            }
-        };
-
-        Some(Ok(Token::BuiltinWord(word))) // TODO: try to make it better
+        Some(Ok(Token::Word(word_string))) // TODO: try to make it better
     }
 
     fn tok_single_chr(&mut self, ch: char) -> Option<LexerResult<Token>> {
-        match ch {
+        let tok = match ch {
             '+' => {
                 self.ptr += 1;
-                let res = Token::Math(Math::Add);
-                Some(Ok(res))
+                Some(Token::Math(Math::Add))
             }
             '-' => {
                 self.ptr += 1;
-                let res = Token::Math(Math::Sub);
-                Some(Ok(res))
+                Some(Token::Math(Math::Sub))
             }
             '*' => {
                 self.ptr += 1;
-                let res = Token::Math(Math::Mul);
-                Some(Ok(res))
+                Some(Token::Math(Math::Mul))
             }
             '/' => {
                 self.ptr += 1;
-                let res = Token::Math(Math::Div);
-                Some(Ok(res))
+                Some(Token::Math(Math::Div))
             }
             '.' => {
                 self.ptr += 1;
-                let res = Token::Symbol(Character::Period);
-                Some(Ok(res))
+                Some(Token::Symbol(Character::Output))
             }
             ':' => {
                 self.ptr += 1;
-                let res = Token::Symbol(Character::Colon);
-                Some(Ok(res))
+                Some(Token::Symbol(Character::BeginWord))
             }
             ';' => {
                 self.ptr += 1;
-                let res = Token::Symbol(Character::Semicolon);
-                Some(Ok(res))
+                Some(Token::Symbol(Character::EndWord))
+            }
+            '>' => {
+                self.ptr += 1;
+                Some(Token::Symbol(Character::Gt))
+            }
+            '<' => {
+                self.ptr += 1;
+                Some(Token::Symbol(Character::Lt))
+            }
+            '=' => {
+                self.ptr += 1;
+                Some(Token::Symbol(Character::Equal))
             }
             _ => None,
+        };
+
+        macro_rules! ret {
+            ($t:expr) => {
+                if let Some(t) = $t {
+                    println!("ret some");
+                    Some(Ok(t))
+                } else {
+                    println!("ret none");
+                    None
+                }
+            };
+        }
+
+        let peek_pos = if self.ptr > 2 {
+            self.ptr - 2
+        } else {
+            return ret!(tok);
+        };
+
+        let peek_res = unwrap_to_eof_option!(self.get(peek_pos));
+
+        if peek_res != ' ' && peek_pos > 5 {
+            println!("err");
+            return Some(Err(lex_err!(0, peek_pos, v_unexpected_tok!(peek_res))));
+        } else {
+            return ret!(tok);
         }
     }
 
