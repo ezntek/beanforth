@@ -1,8 +1,12 @@
-use crate::lexer::Lexer;
-
 mod lexer;
+mod parser;
+
+use crate::lexer::Lexer;
 fn main() {
-    let input = ":arst 1 +;"; // \\foobar";
+    let input = "
+: add 1 2 + 3 - ; (comment)
+add
+    "; // \\foobar";
     let mut lexer = Lexer::new(input.to_owned());
     println!("{:?}", lexer.tokenize());
     println!("beans!");

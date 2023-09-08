@@ -1,4 +1,4 @@
-mod types;
+pub mod types;
 
 #[macro_use]
 mod error;
@@ -55,7 +55,7 @@ impl Lexer {
         if pos >= self.data_len {
             None
         } else {
-            Some(self.data[self.ptr])
+            Some(self.data[pos])
         }
     }
 
@@ -197,7 +197,7 @@ impl Lexer {
             };
         }
 
-        let peek_pos = if self.ptr > 2 {
+        let peek_pos = if self.ptr > 1 {
             self.ptr - 2
         } else {
             return ret!(tok);
@@ -205,7 +205,7 @@ impl Lexer {
 
         let peek_res = unwrap_to_eof_option!(self.get(peek_pos));
 
-        if peek_res != ' ' && peek_pos > 5 {
+        if !peek_res.is_ascii_whitespace() && peek_pos > 5 {
             println!("err");
             return Some(Err(lex_err!(0, peek_pos, v_unexpected_tok!(peek_res))));
         } else {
@@ -226,11 +226,7 @@ impl Lexer {
         // comments
         if ch == '\\' {
             self.peek = self.ptr + 1;
-            while {
-                let pk = unwrap_to_eof_option!(self.peek());
-                dbg!(&pk);
-                pk != '\n'
-            } {
+            while unwrap_to_eof_option!(self.peek()) != '\n' {
                 self.peek += 1;
 
                 if self.peek >= self.data_len {
@@ -239,6 +235,21 @@ impl Lexer {
             }
 
             self.ptr = self.peek;
+            return None;
+        }
+
+        // multiline comments
+        if ch == '(' {
+            self.peek = self.ptr + 1;
+            while unwrap_to_eof_option!(self.peek()) != ')' {
+                self.peek += 1;
+
+                if self.peek >= self.data_len {
+                    break;
+                }
+            }
+
+            self.ptr = self.peek + 1;
             return None;
         }
 
