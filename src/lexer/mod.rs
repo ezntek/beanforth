@@ -323,7 +323,6 @@ impl Lexer {
             }
         }
 
-        res.push(eof!());
         res
     }
 }

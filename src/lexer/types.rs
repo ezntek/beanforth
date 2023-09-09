@@ -4,7 +4,7 @@ pub struct ErrorLocation {
     pub column: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Math {
     Add,
     Sub,
@@ -12,7 +12,7 @@ pub enum Math {
     Div,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Character {
     Output, // Period
     Equal,
@@ -22,7 +22,7 @@ pub enum Character {
     BeginWord, // Colon
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReservedWord {
     If,
     Then,
@@ -45,7 +45,7 @@ impl ReservedWord {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Token {
     Math(Math),
     Symbol(Character),
