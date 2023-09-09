@@ -6,6 +6,8 @@ mod error;
 #[macro_use]
 mod macrodefs;
 
+use std::num::IntErrorKind;
+
 use error::*;
 #[allow(unused_imports)]
 use macrodefs::*;
@@ -95,7 +97,21 @@ impl Lexer {
 
         match potential_num.parse::<i32>() {
             Ok(v) => Ok(Token::Literal(v)),
-            Err(_) => Err(lex_err!(0, self.ptr, v_deformed_literal!(potential_num))),
+            Err(e) => match e.kind() {
+                IntErrorKind::PosOverflow => Err(note_lex_err!(
+                    0,
+                    self.ptr,
+                    v_deformed_literal!(potential_num),
+                    "Number is too big to be a signed 32bit integer!"
+                )),
+                IntErrorKind::NegOverflow => Err(note_lex_err!(
+                    0,
+                    self.ptr,
+                    v_deformed_literal!(potential_num),
+                    "Number is too small to be a signed 32bit integer!"
+                )),
+                _ => Err(lex_err!(0, self.ptr, v_deformed_literal!(potential_num))),
+            },
         }
     }
 
@@ -111,7 +127,7 @@ impl Lexer {
                 Some(pk) => pk,
                 None => break 'outerloop,
             };
-            peek.is_ascii_alphabetic()
+            !peek.is_ascii_whitespace()
         } {
             let peek = match self.peek() {
                 Some(p) => p,
@@ -138,79 +154,6 @@ impl Lexer {
         let word_string = unwrap_to_eof_option!(self.read_word());
         dbg!(&word_string);
         Some(Ok(Token::Word(word_string))) // TODO: try to make it better
-    }
-
-    fn tok_single_chr(&mut self, ch: char) -> Option<LexerResult<Token>> {
-        let tok = match ch {
-            '+' => {
-                self.ptr += 1;
-                Some(Token::Math(Math::Add))
-            }
-            '-' => {
-                self.ptr += 1;
-                Some(Token::Math(Math::Sub))
-            }
-            '*' => {
-                self.ptr += 1;
-                Some(Token::Math(Math::Mul))
-            }
-            '/' => {
-                self.ptr += 1;
-                Some(Token::Math(Math::Div))
-            }
-            '.' => {
-                self.ptr += 1;
-                Some(Token::Symbol(Character::Output))
-            }
-            ':' => {
-                self.ptr += 1;
-                Some(Token::Symbol(Character::BeginWord))
-            }
-            ';' => {
-                self.ptr += 1;
-                Some(Token::Symbol(Character::EndWord))
-            }
-            '>' => {
-                self.ptr += 1;
-                Some(Token::Symbol(Character::Gt))
-            }
-            '<' => {
-                self.ptr += 1;
-                Some(Token::Symbol(Character::Lt))
-            }
-            '=' => {
-                self.ptr += 1;
-                Some(Token::Symbol(Character::Equal))
-            }
-            _ => None,
-        };
-
-        macro_rules! ret {
-            ($t:expr) => {
-                if let Some(t) = $t {
-                    println!("ret some");
-                    Some(Ok(t))
-                } else {
-                    println!("ret none");
-                    None
-                }
-            };
-        }
-
-        let peek_pos = if self.ptr > 1 {
-            self.ptr - 2
-        } else {
-            return ret!(tok);
-        };
-
-        let peek_res = unwrap_to_eof_option!(self.get(peek_pos));
-
-        if !peek_res.is_ascii_whitespace() && peek_pos > 5 {
-            println!("err");
-            return Some(Err(lex_err!(0, peek_pos, v_unexpected_tok!(peek_res))));
-        } else {
-            return ret!(tok);
-        }
     }
 
     fn tokenize_at_ptr(&mut self) -> Option<LexerResult<Token>> {
@@ -255,19 +198,13 @@ impl Lexer {
 
         // Numbers
         if ch.is_ascii_digit() {
+            println!("num");
             return Some(self.tokenize_number());
         }
 
         // Words
-        if ch.is_ascii_alphabetic() {
-            if let Some(w) = self.tokenize_word() {
-                return Some(w);
-            }
-        }
-
-        // Single character symbols
-        if let Some(r) = self.tok_single_chr(ch) {
-            return Some(r);
+        if let Some(w) = self.tokenize_word() {
+            return Some(w);
         }
 
         // Fallback
