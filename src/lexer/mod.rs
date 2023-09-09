@@ -23,15 +23,6 @@ pub struct Lexer {
 
 type LexerResult<T> = Result<T, LexerError>;
 
-macro_rules! unwrap_to_eof {
-    ($optchar:expr) => {
-        match $optchar {
-            Some(ch) => ch,
-            None => return Ok(Token::Eof),
-        }
-    };
-}
-
 macro_rules! unwrap_to_eof_option {
     ($optchar:expr) => {
         match $optchar {
@@ -72,7 +63,11 @@ impl Lexer {
     }
 
     fn tokenize_number(&mut self) -> LexerResult<Token> {
-        let mut curr_num_ch: char = unwrap_to_eof!(self.at());
+        let mut curr_num_ch = match self.at() {
+            Some(ch) => ch,
+            None => return Ok(eof!()),
+        };
+
         let mut potential_num = String::from(curr_num_ch);
 
         self.peek = self.ptr + 1;
@@ -115,21 +110,105 @@ impl Lexer {
         }
     }
 
-    fn read_word(&mut self) -> Option<String> {
+    fn tok_single_chr(&mut self, ch: char) -> Option<LexerResult<Token>> {
+        let tok = match ch {
+            '+' => {
+                self.ptr += 1;
+                Some(Token::Math(Math::Add))
+            }
+            '-' => {
+                self.ptr += 1;
+                Some(Token::Math(Math::Sub))
+            }
+            '*' => {
+                self.ptr += 1;
+                Some(Token::Math(Math::Mul))
+            }
+            '/' => {
+                self.ptr += 1;
+                Some(Token::Math(Math::Div))
+            }
+            '.' => {
+                self.ptr += 1;
+                Some(Token::Symbol(Character::Output))
+            }
+            ':' => {
+                self.ptr += 1;
+                Some(Token::Symbol(Character::BeginWord))
+            }
+            ';' => {
+                self.ptr += 1;
+                Some(Token::Symbol(Character::EndWord))
+            }
+            '>' => {
+                self.ptr += 1;
+                Some(Token::Symbol(Character::Gt))
+            }
+            '<' => {
+                self.ptr += 1;
+                Some(Token::Symbol(Character::Lt))
+            }
+            '=' => {
+                self.ptr += 1;
+                Some(Token::Symbol(Character::Equal))
+            }
+            _ => None,
+        };
+
+        macro_rules! ret {
+            ($t:expr) => {
+                if let Some(t) = $t {
+                    Some(Ok(t))
+                } else {
+                    None
+                }
+            };
+        }
+
+        let peek_pos = if self.ptr > 1 {
+            self.ptr - 2
+        } else {
+            return ret!(tok);
+        };
+
+        let peek_res = unwrap_to_eof_option!(self.get(peek_pos));
+
+        let is_not_whitespace = !peek_res.is_ascii_whitespace() && peek_pos > 1;
+        if is_not_whitespace && !tok.is_none() {
+            return Some(Err(lex_err!(0, peek_pos, v_unexpected_tok!(peek_res))));
+        } else {
+            return ret!(tok);
+        }
+    }
+
+    fn read_word(&mut self) -> String {
         let mut s = String::new();
 
         self.peek = self.ptr;
 
+        // it is not memoized twice so that
+        // the optional property of the memo
+        // result can indicate if it is
+        // out of bounds or not.
+        let mut peek_memo: Option<char>;
+
         'outerloop: while {
-            let p = self.peek();
-            dbg!(&p);
-            let peek = match p {
+            // memoize the result of the peek.
+            // avoids calling peek twice.
+            peek_memo = self.peek();
+
+            // manually unwrapped to be able to run
+            // code that is placed at the bottom
+            // of the function.
+            //
+            // Very convoluted is_ascii_whitespace call.
+            !(match peek_memo {
                 Some(pk) => pk,
                 None => break 'outerloop,
-            };
-            !peek.is_ascii_whitespace()
+            })
+            .is_ascii_whitespace()
         } {
-            let peek = match self.peek() {
+            let peek = match peek_memo {
                 Some(p) => p,
                 None => {
                     s.push(self.get(self.peek - 1).unwrap());
@@ -142,18 +221,13 @@ impl Lexer {
         }
 
         self.ptr = self.peek;
-
-        println!("{}", s);
-
-        dbg!(&s);
-
-        return Some(s);
+        s
     }
 
-    fn tokenize_word(&mut self) -> Option<LexerResult<Token>> {
-        let word_string = unwrap_to_eof_option!(self.read_word());
+    fn tokenize_word(&mut self) -> LexerResult<Token> {
+        let word_string = self.read_word();
         dbg!(&word_string);
-        Some(Ok(Token::Word(word_string))) // TODO: try to make it better
+        Ok(Token::Word(word_string))
     }
 
     fn tokenize_at_ptr(&mut self) -> Option<LexerResult<Token>> {
@@ -202,13 +276,30 @@ impl Lexer {
             return Some(self.tokenize_number());
         }
 
-        // Words
-        if let Some(w) = self.tokenize_word() {
-            return Some(w);
+        // Single character symbols
+        if let Some(r) = self.tok_single_chr(ch) {
+            return Some(r);
         }
 
-        // Fallback
-        Some(Err(lex_err!(0, self.ptr, v_invalid_tok!(ch))))
+        // Everything else is a word
+        {
+            let word = match self.tokenize_word() {
+                Ok(w) => w,
+                Err(e) => {
+                    return Some(Err(e));
+                }
+            };
+
+            if let Token::Word(wd_s) = &word {
+                if let Some(rw) = ReservedWord::try_to_string(wd_s) {
+                    return Some(Ok(Token::ReservedWord(rw)));
+                } else {
+                    Some(Ok(word))
+                }
+            } else {
+                unreachable!()
+            }
+        }
     }
 
     pub fn tokenize(&mut self) -> Vec<Token> {
