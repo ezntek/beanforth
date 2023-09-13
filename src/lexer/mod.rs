@@ -1,14 +1,10 @@
 pub mod types;
-
-#[macro_use]
-mod error;
-
 #[macro_use]
 mod macrodefs;
 
+use super::error::*;
 use std::num::IntErrorKind;
 
-use error::*;
 #[allow(unused_imports)]
 use macrodefs::*;
 use types::*;
@@ -21,13 +17,13 @@ pub struct Lexer {
     peek: usize,
 }
 
-type LexerResult<T> = Result<T, LexerError>;
+type LexerResult<T> = Result<T, Error>;
 
 macro_rules! unwrap_to_eof_option {
     ($optchar:expr) => {
         match $optchar {
             Some(ch) => ch,
-            None => return Some(Ok(Token::Eof)),
+            None => return Some(Ok(Token::End)),
         }
     };
 }
@@ -93,19 +89,19 @@ impl Lexer {
         match potential_num.parse::<i32>() {
             Ok(v) => Ok(Token::Literal(v)),
             Err(e) => match e.kind() {
-                IntErrorKind::PosOverflow => Err(note_lex_err!(
+                IntErrorKind::PosOverflow => Err(err_with_note!(
                     0,
                     self.ptr,
                     v_deformed_literal!(potential_num),
                     "Number is too big to be a signed 32bit integer!"
                 )),
-                IntErrorKind::NegOverflow => Err(note_lex_err!(
+                IntErrorKind::NegOverflow => Err(err_with_note!(
                     0,
                     self.ptr,
                     v_deformed_literal!(potential_num),
                     "Number is too small to be a signed 32bit integer!"
                 )),
-                _ => Err(lex_err!(0, self.ptr, v_deformed_literal!(potential_num))),
+                _ => Err(err!(0, self.ptr, v_deformed_literal!(potential_num))),
             },
         }
     }
@@ -175,7 +171,7 @@ impl Lexer {
 
         let is_not_whitespace = !peek_res.is_ascii_whitespace() && peek_pos > 1;
         if is_not_whitespace && !tok.is_none() {
-            return Some(Err(lex_err!(0, peek_pos, v_unexpected_tok!(peek_res))));
+            return Some(Err(err!(0, peek_pos, v_unexpected_tok!(peek_res))));
         } else {
             return ret!(tok);
         }
@@ -303,7 +299,7 @@ impl Lexer {
     }
 
     pub fn tokenize(&mut self) -> Vec<Token> {
-        let mut res: Vec<Token> = Vec::new();
+        let mut res: Vec<Token> = Vec::from([Token::Begin]);
 
         while self.ptr < self.data_len {
             if let Some(r) = self.tokenize_at_ptr() {
@@ -315,7 +311,7 @@ impl Lexer {
                     }
                 };
 
-                if let Token::Eof = tok {
+                if let Token::End = tok {
                     break;
                 }
 
@@ -323,6 +319,7 @@ impl Lexer {
             }
         }
 
+        res.push(Token::End);
         res
     }
 }

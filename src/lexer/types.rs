@@ -1,9 +1,3 @@
-#[derive(Debug)]
-pub struct ErrorLocation {
-    pub line: usize,
-    pub column: usize,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Math {
     Add,
@@ -52,5 +46,6 @@ pub enum Token {
     Word(String),
     ReservedWord(ReservedWord),
     Literal(i32),
-    Eof,
+    Begin,
+    End,
 }
