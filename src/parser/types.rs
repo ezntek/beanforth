@@ -1,5 +1,7 @@
+use crate::error::Error;
 use crate::lexer::types::Math;
 
+pub(super) type ParserResult<T> = Result<T, Error>;
 pub type Literal = i32;
 
 #[derive(Debug)]

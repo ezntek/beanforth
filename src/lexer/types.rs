@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::{loc, Error, Location};
 
 pub(super) type LexerResult<T> = Result<T, Error>;
 
@@ -43,8 +43,8 @@ impl ReservedWord {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum Token {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TokenVariant {
     Math(Math),
     Symbol(Character),
     Word(String),
@@ -52,4 +52,33 @@ pub enum Token {
     Literal(i32),
     Begin,
     End,
+}
+
+#[derive(Clone, Debug)]
+pub struct Token {
+    pub variant: TokenVariant,
+    location: Option<Location>,
+}
+
+impl Token {
+    pub fn new(variant: TokenVariant) -> Self {
+        Token {
+            variant,
+            location: None,
+        }
+    }
+
+    pub fn with_location(variant: TokenVariant, location: Location) -> Self {
+        Token {
+            variant,
+            location: Some(location),
+        }
+    }
+
+    pub fn get_location(&self) -> Location {
+        match self.location {
+            Some(loc) => loc,
+            None => loc!(0, 0),
+        }
+    }
 }

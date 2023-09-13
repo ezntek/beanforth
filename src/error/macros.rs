@@ -1,9 +1,9 @@
 #[allow(unused_imports)]
 use super::error::*;
 
-macro_rules! err_loc {
+macro_rules! loc {
     ($line:expr, $col:expr) => {
-        ErrorLocation {
+        Location {
             line: $line,
             column: $col,
         }
@@ -30,5 +30,5 @@ macro_rules! err_with_note {
 }
 
 pub(crate) use err;
-pub(crate) use err_loc;
 pub(crate) use err_with_note;
+pub(crate) use loc;

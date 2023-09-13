@@ -1,21 +1,24 @@
 use std::{error, fmt};
 
-#[derive(Debug)]
-pub struct ErrorLocation {
+use crate::lexer::types::Token;
+
+#[derive(Debug, Clone, Copy)]
+pub struct Location {
     pub line: usize,
     pub column: usize,
 }
 
 #[derive(Debug)]
 pub enum ErrorVariant {
-    UnexpectedToken(char),
+    UnexpectedChar(char),
+    UnexpectedToken(Token),
     DeformedLiteral(String),
     //GenericPlaceholder,
 }
 
 #[derive(Debug)]
 pub struct Error {
-    pub pos: ErrorLocation, // line, column
+    pub pos: Location, // line, column
     pub note: String,
     pub variant: ErrorVariant,
 }
@@ -26,8 +29,9 @@ impl fmt::Display for ErrorVariant {
 
         match self {
             //V::InvalidToken(ch) => write!(f, "Invalid character `{}`", ch),
-            V::UnexpectedToken(ch) => write!(f, "Unexpected character `{}`", ch),
+            V::UnexpectedChar(ch) => write!(f, "Unexpected character `{}`", ch),
             V::DeformedLiteral(s) => write!(f, "Deformed literal `{}`", s),
+            V::UnexpectedToken(tok) => write!(f, "Unexpected Token `{:?}`", tok),
             //V::GenericPlaceholder => write!(f, "Generic placeholder error"),
         }
     }

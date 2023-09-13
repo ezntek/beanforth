@@ -22,7 +22,10 @@ macro_rules! unwrap_to_eof_option {
     ($optchar:expr) => {
         match $optchar {
             Some(ch) => ch,
-            None => return Some(Ok(Token::End)),
+            None => {
+                let tok = token!(TokenVariant::End);
+                return Some(Ok(tok));
+            }
         }
     };
 }
@@ -49,7 +52,7 @@ impl Lexer {
         }
     }
 
-    fn get_err_pos(&self, pos: usize) -> ErrorLocation {
+    fn get_err_pos(&self, pos: usize) -> Location {
         for (idx, loc) in self.newlines.iter().enumerate() {
             if &pos <= loc {
                 let line = idx + 1;
@@ -57,11 +60,11 @@ impl Lexer {
                 // from it by subtracting `pos` from it.
                 let col = pos - (self.newlines[idx - 1]);
 
-                return err_loc!(line, col);
+                return loc!(line, col);
             }
         }
         // fallback case
-        err_loc!(self.newlines[self.newlines.len() - 1], 0)
+        loc!(self.newlines[self.newlines.len() - 1], 0)
     }
 
     fn get(&self, pos: usize) -> Option<char> {
@@ -111,7 +114,7 @@ impl Lexer {
         self.ptr = self.peek;
 
         match potential_num.parse::<i32>() {
-            Ok(v) => Ok(Token::Literal(v)),
+            Ok(v) => Ok(token!(TokenVariant::Literal(v))),
             Err(e) => match e.kind() {
                 IntErrorKind::PosOverflow => Err(err_with_note!(
                     self.get_err_pos(self.ptr - potential_num.len()),
@@ -135,43 +138,43 @@ impl Lexer {
         let tok = match ch {
             '+' => {
                 self.ptr += 1;
-                Some(Token::Math(Math::Add))
+                Some(TokenVariant::Math(Math::Add))
             }
             '-' => {
                 self.ptr += 1;
-                Some(Token::Math(Math::Sub))
+                Some(TokenVariant::Math(Math::Sub))
             }
             '*' => {
                 self.ptr += 1;
-                Some(Token::Math(Math::Mul))
+                Some(TokenVariant::Math(Math::Mul))
             }
             '/' => {
                 self.ptr += 1;
-                Some(Token::Math(Math::Div))
+                Some(TokenVariant::Math(Math::Div))
             }
             '.' => {
                 self.ptr += 1;
-                Some(Token::Symbol(Character::Output))
+                Some(TokenVariant::Symbol(Character::Output))
             }
             ':' => {
                 self.ptr += 1;
-                Some(Token::Symbol(Character::BeginWord))
+                Some(TokenVariant::Symbol(Character::BeginWord))
             }
             ';' => {
                 self.ptr += 1;
-                Some(Token::Symbol(Character::EndWord))
+                Some(TokenVariant::Symbol(Character::EndWord))
             }
             '>' => {
                 self.ptr += 1;
-                Some(Token::Symbol(Character::Gt))
+                Some(TokenVariant::Symbol(Character::Gt))
             }
             '<' => {
                 self.ptr += 1;
-                Some(Token::Symbol(Character::Lt))
+                Some(TokenVariant::Symbol(Character::Lt))
             }
             '=' => {
                 self.ptr += 1;
-                Some(Token::Symbol(Character::Equal))
+                Some(TokenVariant::Symbol(Character::Equal))
             }
             _ => None,
         };
@@ -179,7 +182,7 @@ impl Lexer {
         macro_rules! ret {
             ($t:expr) => {
                 if let Some(t) = $t {
-                    Some(Ok(t))
+                    Some(Ok(token!(t)))
                 } else {
                     None
                 }
@@ -198,7 +201,7 @@ impl Lexer {
         if is_not_whitespace && !tok.is_none() {
             return Some(Err(err!(
                 self.get_err_pos(self.ptr),
-                v_unexpected_tok!(peek_res)
+                v_unexpected_char!(peek_res)
             )));
         } else {
             return ret!(tok);
@@ -251,7 +254,7 @@ impl Lexer {
     fn tokenize_word(&mut self) -> LexerResult<Token> {
         let word_string = self.read_word();
         dbg!(&word_string);
-        Ok(Token::Word(word_string))
+        Ok(token!(TokenVariant::Word(word_string)))
     }
 
     fn tokenize_at_ptr(&mut self) -> Option<LexerResult<Token>> {
@@ -314,9 +317,9 @@ impl Lexer {
                 }
             };
 
-            if let Token::Word(wd_s) = &word {
+            if let TokenVariant::Word(wd_s) = &word.variant {
                 if let Some(rw) = ReservedWord::try_to_string(wd_s) {
-                    return Some(Ok(Token::ReservedWord(rw)));
+                    return Some(Ok(token!(TokenVariant::ReservedWord(rw))));
                 } else {
                     Some(Ok(word))
                 }
@@ -327,7 +330,7 @@ impl Lexer {
     }
 
     pub fn tokenize(&mut self) -> Vec<Token> {
-        let mut res: Vec<Token> = Vec::from([Token::Begin]);
+        let mut res: Vec<Token> = Vec::from([token!(TokenVariant::Begin)]);
 
         while self.ptr < self.data_len {
             if let Some(r) = self.tokenize_at_ptr() {
@@ -339,7 +342,7 @@ impl Lexer {
                     }
                 };
 
-                if let Token::End = tok {
+                if let TokenVariant::End = tok.variant {
                     break;
                 }
 
@@ -347,7 +350,7 @@ impl Lexer {
             }
         }
 
-        res.push(Token::End);
+        res.push(token!(TokenVariant::End));
         res
     }
 }

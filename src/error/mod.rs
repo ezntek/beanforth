@@ -21,6 +21,12 @@ macro_rules! v_deformed_literal {
     };
 }
 
+macro_rules! v_unexpected_char {
+    ($param:expr) => {
+        ErrorVariant::UnexpectedChar($param)
+    };
+}
+
 macro_rules! v_unexpected_tok {
     ($param:expr) => {
         ErrorVariant::UnexpectedToken($param)
@@ -29,6 +35,7 @@ macro_rules! v_unexpected_tok {
 
 pub(crate) use v_deformed_literal;
 // pub(crate) use v_invalid_tok;
+pub(crate) use v_unexpected_char;
 pub(crate) use v_unexpected_tok;
 
 /*#[macro_export]

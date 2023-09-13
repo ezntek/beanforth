@@ -1,13 +1,22 @@
-#[macro_export]
-macro_rules! eof {
-    () => {
-        Token::End
+macro_rules! token {
+    ($variant:expr) => {
+        Token::new($variant)
+    };
+
+    ($variant:expr, $loc:expr) => {
+        Token::with_location($variant, $loc)
+    };
+
+    ($variant:expr, $line:expr, $col:expr) => {
+        Token::with_location($variant, location!($line, $col))
     };
 }
 
-#[macro_export]
-macro_rules! nothing {
+macro_rules! eof {
     () => {
-        Token::Nothing
+        token!(TokenVariant::End)
     };
 }
+
+pub(super) use eof;
+pub(crate) use token;
