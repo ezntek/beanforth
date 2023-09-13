@@ -31,7 +31,7 @@ impl fmt::Display for ErrorVariant {
             //V::InvalidToken(ch) => write!(f, "Invalid character `{}`", ch),
             V::UnexpectedChar(ch) => write!(f, "Unexpected character `{}`", ch),
             V::DeformedLiteral(s) => write!(f, "Deformed literal `{}`", s),
-            V::UnexpectedToken(tok) => write!(f, "Unexpected Token `{:?}`", tok),
+            V::UnexpectedToken(tok) => write!(f, "Unexpected Token `{}`", tok),
             //V::GenericPlaceholder => write!(f, "Generic placeholder error"),
         }
     }

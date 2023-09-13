@@ -9,6 +9,12 @@ use crate::{
 };
 use types::*;
 
+// Rust Function Pointers
+//
+// Owned Trait Object:  Box<dyn Fn(char, i32, String)>
+// Generic:             T where T: Fn(char, i32, String)
+// Shorthand Generic:   impl Fn(char, i32, String)
+
 pub struct Parser {
     tokens: Rc<[Token]>,
     ptr: usize,
@@ -39,31 +45,45 @@ impl Parser {
 
     pub fn parse_word(&mut self) -> ParserResult<Node> {
         self.peek = self.ptr + 1;
-        let word_name = self.peek();
+        let word_tok = self.peek();
+        let word_name = match &word_tok.variant {
+            TokenVariant::Word(wd) => wd.clone(),
+            _ => {
+                return Err(err_with_note!(
+                    loc!(0, 0),
+                    v_unexpected_tok!(word_tok.clone()),
+                    "aorysudhoyauwnfdkoyawumt"
+                ))
+            }
+        };
         self.peek += 1;
 
         let mut code: Vec<Node> = Vec::new();
-        let tok = self.peek();
+        let tokens = self.tokens.clone();
+        let tok = &tokens[self.peek];
 
-        let invalid_word_chrs = [
-            TokenVariant::Symbol(Character::BeginWord),
-            TokenVariant::Symbol(Character::EndWord),
-        ];
+        let invalid_word_chrs = [TokenVariant::Symbol(Character::BeginWord)];
 
-        while tok.variant != TokenVariant::Symbol(Character::EndWord) {
+        while tok.variant != TokenVariant::Symbol(Character::EndWord)
+            && self.peek < self.tokens.len()
+        {
+            let tok = &tokens[self.peek].clone();
             if invalid_word_chrs.contains(&tok.variant) {
                 return Err(err_with_note!(
                     loc!(0, 0),
                     v_unexpected_tok!(tok.clone()),
-                    format!("{:?} not expected within a word", &tok)
+                    format!("{} not expected within a word", &tok)
                 ));
             } else {
-                let tok = self.peek().variant;
                 let node = self.parse_token(&tok.variant).unwrap();
             }
+            self.peek += 1;
         }
 
-        Ok(Node::NotImplemented) // FIXME:
+        Ok(Node::WordDef {
+            name: word_name,
+            code,
+        })
     }
 
     pub fn parse_token(&mut self, tok: &TokenVariant) -> ParserResult<Node> {
@@ -71,7 +91,7 @@ impl Parser {
             // Basics
             TokenVariant::Word(wd_s) => Ok(Node::WordCall(wd_s.clone())),
             TokenVariant::Math(math) => Ok(Node::Math(MathOp::from(math.clone()))),
-            TokenVariant::Literal(n) => Ok(Node::Push(*n)),
+            TokenVariant::Literal(n) => Ok(Node::Push(n.clone())),
 
             // Word definitions
             TokenVariant::Symbol(Character::BeginWord) => self.parse_word(),

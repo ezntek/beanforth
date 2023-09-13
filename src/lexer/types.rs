@@ -60,6 +60,16 @@ pub struct Token {
     location: Option<Location>,
 }
 
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let suffix = match self.location {
+            Some(loc) => format!(" @ {},{}", loc.line, loc.column),
+            None => "".to_owned(),
+        };
+        write!(f, "{:?}{}", self.variant, suffix,)
+    }
+}
+
 impl Token {
     pub fn new(variant: TokenVariant) -> Self {
         Token {

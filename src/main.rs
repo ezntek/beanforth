@@ -9,9 +9,16 @@ fn main() {
 
     let mut lexer = Lexer::new(buf);
     let tokens = lexer.tokenize();
-    println!("{:?}", tokens);
+    let mut s = String::from("[");
+    for tok in tokens.iter() {
+        s.push_str(format!("{}", tok).as_str());
+        s.push_str(", ");
+    }
+    s.push(']');
+
+    println!("{}", s);
 
     let ast = Parser::new(tokens).parse();
     println!("{:?}", ast);
-    println!("beans!");
+    println!("ns!");
 }

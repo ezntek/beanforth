@@ -299,7 +299,6 @@ impl Lexer {
 
         // Numbers
         if ch.is_ascii_digit() {
-            println!("num");
             return Some(self.tokenize_number());
         }
 
