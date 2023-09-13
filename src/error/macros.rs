@@ -10,9 +10,9 @@ macro_rules! err_loc {
     };
 }
 macro_rules! err {
-    ($line:expr, $col:expr, $variant:expr) => {
+    ($pos:expr, $variant:expr) => {
         Error {
-            pos: err_loc!($line, $col),
+            pos: $pos,
             note: String::new(),
             variant: $variant,
         }
@@ -20,9 +20,9 @@ macro_rules! err {
 }
 
 macro_rules! err_with_note {
-    ($line:expr, $col:expr, $variant:expr, $note:expr) => {
+    ($pos:expr, $variant:expr, $note:expr) => {
         Error {
-            pos: err_loc!($line, $col),
+            pos: $pos,
             note: $note.to_owned(),
             variant: $variant,
         }

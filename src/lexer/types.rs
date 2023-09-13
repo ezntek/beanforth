@@ -1,3 +1,7 @@
+use crate::error::Error;
+
+pub(super) type LexerResult<T> = Result<T, Error>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Math {
     Add,

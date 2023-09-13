@@ -15,9 +15,8 @@ pub struct Lexer {
     data_len: usize,
     ptr: usize,
     peek: usize,
+    newlines: Box<[usize]>,
 }
-
-type LexerResult<T> = Result<T, Error>;
 
 macro_rules! unwrap_to_eof_option {
     ($optchar:expr) => {
@@ -28,16 +27,41 @@ macro_rules! unwrap_to_eof_option {
     };
 }
 
+fn get_newline_positions_string(s: &str) -> Box<[usize]> {
+    let mut res = Vec::new();
+    for (ch_i, ch) in s.chars().enumerate() {
+        if ch == '\n' {
+            res.push(ch_i)
+        }
+    }
+    dbg!(&res);
+    res.into_boxed_slice()
+}
+
 impl Lexer {
     pub fn new(data: String) -> Self {
-        dbg!(&data);
-        dbg!(data.len());
         Lexer {
             data: data.chars().collect::<Vec<char>>(),
             data_len: data.len(),
             ptr: 0,
             peek: 0,
+            newlines: get_newline_positions_string(&data),
         }
+    }
+
+    fn get_err_pos(&self, pos: usize) -> ErrorLocation {
+        for (idx, loc) in self.newlines.iter().enumerate() {
+            if &pos <= loc {
+                let line = idx + 1;
+                // Get previous line no. and get the offset
+                // from it by subtracting `pos` from it.
+                let col = pos - (self.newlines[idx - 1]);
+
+                return err_loc!(line, col);
+            }
+        }
+        // fallback case
+        err_loc!(self.newlines[self.newlines.len() - 1], 0)
     }
 
     fn get(&self, pos: usize) -> Option<char> {
@@ -90,18 +114,19 @@ impl Lexer {
             Ok(v) => Ok(Token::Literal(v)),
             Err(e) => match e.kind() {
                 IntErrorKind::PosOverflow => Err(err_with_note!(
-                    0,
-                    self.ptr,
+                    self.get_err_pos(self.ptr - potential_num.len()),
                     v_deformed_literal!(potential_num),
                     "Number is too big to be a signed 32bit integer!"
                 )),
                 IntErrorKind::NegOverflow => Err(err_with_note!(
-                    0,
-                    self.ptr,
+                    self.get_err_pos(self.ptr - potential_num.len()),
                     v_deformed_literal!(potential_num),
                     "Number is too small to be a signed 32bit integer!"
                 )),
-                _ => Err(err!(0, self.ptr, v_deformed_literal!(potential_num))),
+                _ => Err(err!(
+                    self.get_err_pos(self.ptr - potential_num.len()),
+                    v_deformed_literal!(potential_num)
+                )),
             },
         }
     }
@@ -171,7 +196,10 @@ impl Lexer {
 
         let is_not_whitespace = !peek_res.is_ascii_whitespace() && peek_pos > 1;
         if is_not_whitespace && !tok.is_none() {
-            return Some(Err(err!(0, peek_pos, v_unexpected_tok!(peek_res))));
+            return Some(Err(err!(
+                self.get_err_pos(self.ptr),
+                v_unexpected_tok!(peek_res)
+            )));
         } else {
             return ret!(tok);
         }
