@@ -9,12 +9,6 @@ use crate::{
 };
 use types::*;
 
-// Rust Function Pointers
-//
-// Owned Trait Object:  Box<dyn Fn(char, i32, String)>
-// Generic:             T where T: Fn(char, i32, String)
-// Shorthand Generic:   impl Fn(char, i32, String)
-
 pub struct Parser {
     tokens: Rc<[Token]>,
     ptr: usize,
@@ -60,14 +54,14 @@ impl Parser {
 
         let mut code: Vec<Node> = Vec::new();
         let tokens = self.tokens.clone();
-        let tok = &tokens[self.peek];
+        let mut tok = &tokens[self.peek];
 
         let invalid_word_chrs = [TokenVariant::Symbol(Character::BeginWord)];
 
-        while tok.variant != TokenVariant::Symbol(Character::EndWord)
-            && self.peek < self.tokens.len()
-        {
-            let tok = &tokens[self.peek].clone();
+        while {
+            tok = &tokens[self.peek];
+            tok.variant != TokenVariant::Symbol(Character::EndWord) && self.peek < self.tokens.len()
+        } {
             if invalid_word_chrs.contains(&tok.variant) {
                 return Err(err_with_note!(
                     loc!(0, 0),
@@ -76,10 +70,12 @@ impl Parser {
                 ));
             } else {
                 let node = self.parse_token(&tok.variant).unwrap();
+                code.push(node);
             }
             self.peek += 1;
         }
 
+        self.ptr = self.peek;
         Ok(Node::WordDef {
             name: word_name,
             code,
@@ -118,14 +114,20 @@ impl Parser {
         }
 
         while self.ptr < tokens.len() {
-            let node = self
-                .parse_token(&tokens[self.ptr].variant)
-                .unwrap_or_else(|e| {
-                    println!("{}", e);
-                    std::process::exit(1)
-                });
+            if {
+                let v = &self.tokens[self.ptr].variant;
+                v != &TokenVariant::Begin && v != &TokenVariant::End
+            } {
+                let node = self
+                    .parse_token(&tokens[self.ptr].variant)
+                    .unwrap_or_else(|e| {
+                        println!("{}", e);
+                        std::process::exit(1)
+                    });
+                code.push(node);
+            }
+
             self.ptr += 1;
-            code.push(node);
         }
 
         Node::Toplevel(code)
